@@ -28,21 +28,21 @@
    "screenshots": [
     {
       "src": "screenshots/screen1.png",
-      "sizes": "390x844",
+      "sizes": "1170x2532",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Ana Ekran"
     },
     {
       "src": "screenshots/screen2.png",
-      "sizes": "390x844",
+      "sizes": "1170x2532",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Geri Sayım"
     },
     {
       "src": "screenshots/screen3.png",
-      "sizes": "390x844",
+      "sizes": "1170x2532",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Roket Animasyonu"
