@@ -23,12 +23,12 @@
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Geri Sayım - 10'dan 1'e</title>
+<title>Roket Geri Sayımı - 10'dan 0'a</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(135deg, #6a1b9a 0%, #ec407a 100%);
+    background: linear-gradient(180deg, #1a0033 0%, #4a148c 50%, #ec407a 100%);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -36,6 +36,27 @@
     padding: 10px;
     color: white;
     overflow: hidden;
+    position: relative;
+  }
+  /* Yıldızlar */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: twinkle 3s infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
   }
   .header {
     width: 100%;
@@ -44,10 +65,11 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: rgba(0,0,0,0.25);
+    background: rgba(0,0,0,0.4);
     border-radius: 14px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     backdrop-filter: blur(8px);
+    z-index: 2;
   }
   .stat { text-align: center; }
   .stat .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
@@ -74,27 +96,38 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
+    gap: 10px;
     width: 100%;
-    max-width: 480px;
-    flex: 1;
-    max-height: 700px;
+    max-width: 460px;
     padding: 4px;
+    z-index: 2;
+    justify-items: center;
   }
   .cell {
+    width: 100%;
     aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(36px, 12vw, 64px);
+    font-size: clamp(32px, 11vw, 56px);
     font-weight: 800;
-    border-radius: 18px;
+    border-radius: 16px;
     background: linear-gradient(145deg, #4fc3f7, #0288d1);
     color: white;
     box-shadow: 0 6px 16px rgba(2, 136, 209, 0.5), inset 0 -4px 0 rgba(0,0,0,0.2);
     cursor: pointer;
     transition: transform 0.1s, opacity 0.3s, background 0.3s;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  /* Sıfır özel renk */
+  .cell.zero {
+    background: linear-gradient(145deg, #ff9800, #e65100);
+    box-shadow: 0 6px 16px rgba(230, 81, 0, 0.6), inset 0 -4px 0 rgba(0,0,0,0.2);
+    animation: zeroPulse 1.5s infinite;
+  }
+  @keyframes zeroPulse {
+    0%, 100% { box-shadow: 0 6px 16px rgba(230, 81, 0, 0.6), inset 0 -4px 0 rgba(0,0,0,0.2); }
+    50% { box-shadow: 0 6px 30px rgba(255, 152, 0, 0.9), inset 0 -4px 0 rgba(0,0,0,0.2); }
   }
   .cell:active { transform: scale(0.92); }
   .cell.off {
@@ -104,6 +137,7 @@
     pointer-events: none;
     text-decoration: line-through;
     text-shadow: none;
+    animation: none;
   }
   .cell.wrong {
     animation: shake 0.4s;
@@ -125,7 +159,7 @@
   .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.9);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -134,7 +168,7 @@
     padding: 20px;
     text-align: center;
   }
-  .overlay h1 { font-size: 36px; margin-bottom: 10px; }
+  .overlay h1 { font-size: 40px; margin-bottom: 10px; }
   .overlay .score-big {
     font-size: 80px;
     font-weight: 900;
@@ -163,20 +197,47 @@
     margin-bottom: 8px;
     text-align: center;
     font-weight: 500;
+    z-index: 2;
+    min-height: 20px;
   }
   .rocket {
     position: fixed;
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 40px;
+    font-size: 36px;
     pointer-events: none;
     transition: transform 0.5s;
-    opacity: 0.7;
+    opacity: 0.85;
+    z-index: 3;
+  }
+  .launch-text {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 60px;
+    font-weight: 900;
+    color: #ffeb3b;
+    text-shadow: 0 0 40px rgba(255,235,59,0.9);
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .launch-text.show {
+    animation: launchTextAnim 1.5s forwards;
+  }
+  @keyframes launchTextAnim {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.3) rotate(5deg); opacity: 1; }
+    60% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.5) rotate(0deg); opacity: 0; }
   }
 </style>
 </head>
 <body>
+
+  <div class="stars" id="stars"></div>
 
   <button class="music-btn" id="musicBtn" title="Müzik">🔊</button>
 
@@ -195,14 +256,16 @@
     </div>
   </div>
 
-  <div class="instruction" id="instruction">🚀 10'dan başla, geriye doğru say! 10, 9, 8... 1</div>
+  <div class="instruction" id="instruction">🚀 10'dan başla, sıfıra kadar geri say! 10, 9... 1, 0</div>
 
   <div class="grid" id="grid"></div>
 
   <div class="rocket" id="rocket">🚀</div>
 
+  <div class="launch-text" id="launchText">🚀 ATEŞLEME! 🔥</div>
+
   <div class="overlay hidden" id="endScreen">
-    <h1>🎉 Roket Kalktı!</h1>
+    <h1>🎉 Roket Uzayda!</h1>
     <p>Süreniz: <span id="finalTime"></span></p>
     <div class="score-big" id="finalScore">0</div>
     <p>Puan</p>
@@ -220,12 +283,26 @@
   const instruction = document.getElementById('instruction');
   const musicBtn = document.getElementById('musicBtn');
   const rocket = document.getElementById('rocket');
+  const launchText = document.getElementById('launchText');
+  const starsContainer = document.getElementById('stars');
 
   const MAX_SCORE = 1000;
   const START_NUM = 10;
+  const END_NUM = 0;
+  const TOTAL_NUMBERS = START_NUM - END_NUM + 1; // 11 sayı
   let nextNumber = START_NUM;
   let startTime = null;
   let timerInterval = null;
+
+  // Yıldızlar oluştur
+  for (let i = 0; i < 30; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    starsContainer.appendChild(star);
+  }
 
   // ==== SES SİSTEMİ ====
   let audioCtx = null;
@@ -260,11 +337,10 @@
     osc.stop(audioCtx.currentTime + duration);
   }
 
-  // Doğru dokunma sesi - geri sayımda her sayıda azalan ton (gerilim hissi)
+  // Doğru dokunma sesi - sayı küçüldükçe heyecan artar
   function playCorrectSound(num) {
     initAudio();
-    // Sayı küçüldükçe ton da değişiyor (10 yüksek, 1 en yüksek/heyecanlı)
-    const baseFreq = 300 + (START_NUM - num + 1) * 50;
+    const baseFreq = 300 + (START_NUM - num + 1) * 40;
     playNote(baseFreq, 0.15, 'sine', masterGain, 0.4);
     setTimeout(() => playNote(baseFreq * 1.3, 0.2, 'sine', masterGain, 0.3), 60);
   }
@@ -276,33 +352,49 @@
     setTimeout(() => playNote(150, 0.2, 'sawtooth', masterGain, 0.3), 100);
   }
 
-  // Roket kalkış sesi (zafer)
-  function playWinSound() {
+  // ATEŞLEME sesi - sıfıra basıldığında özel patlama
+  function playIgnitionSound() {
     initAudio();
-    // Yükselen frekans - roket kalkışı
-    const duration = 1.2;
+    // Önce büyük "patlama" gürültüsü
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+    }
+    noise.buffer = buffer;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.4;
+    noise.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start();
+  }
+
+  // Roket kalkış sesi
+  function playLaunchSound() {
+    initAudio();
+    const duration = 1.5;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + duration);
-    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + duration);
+    gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
     osc.connect(gain);
     gain.connect(masterGain);
     osc.start();
     osc.stop(audioCtx.currentTime + duration);
 
-    // Sonra zafer notaları
     setTimeout(() => {
-      const notes = [659, 784, 1047, 1319];
+      const notes = [659, 784, 1047, 1319, 1568];
       notes.forEach((freq, i) => {
-        setTimeout(() => playNote(freq, 0.3, 'triangle', masterGain, 0.4), i * 150);
+        setTimeout(() => playNote(freq, 0.3, 'triangle', masterGain, 0.4), i * 130);
       });
-    }, 1200);
+    }, 1400);
   }
 
-  // Neşeli arka plan müziği - canlı ve macera dolu melodi
+  // Neşeli arka plan müziği
   const melody = [
     {n: 659, d: 0.3}, {n: 784, d: 0.3}, {n: 1047, d: 0.3}, {n: 784, d: 0.3},
     {n: 659, d: 0.3}, {n: 784, d: 0.3}, {n: 1047, d: 0.6},
@@ -360,10 +452,9 @@
   }
 
   function updateRocket() {
-    // Roket geri sayım ilerledikçe yukarı çıkar
-    const progress = (START_NUM - nextNumber) / START_NUM;
-    const offset = progress * 100;
-    rocket.style.transform = `translateX(-50%) translateY(${-offset}px) scale(${1 + progress * 0.3})`;
+    const progress = (START_NUM - nextNumber) / (START_NUM - END_NUM + 1);
+    const offset = progress * 80;
+    rocket.style.transform = `translateX(-50%) translateY(${-offset}px) scale(${1 + progress * 0.4})`;
   }
 
   function startGame() {
@@ -373,15 +464,19 @@
     timerEl.textContent = '0.0s';
     scoreEl.textContent = MAX_SCORE;
     nextEl.textContent = START_NUM;
-    instruction.textContent = "🚀 10'dan başla, geriye doğru say! 10, 9, 8... 1";
+    instruction.textContent = "🚀 10'dan başla, sıfıra kadar geri say!";
     endScreen.classList.add('hidden');
+    rocket.style.transition = 'transform 0.5s';
     rocket.style.transform = 'translateX(-50%)';
+    launchText.classList.remove('show');
 
     grid.innerHTML = '';
-    const numbers = shuffle([...Array(START_NUM).keys()].map(i => i + 1));
+    // 0'dan 10'a kadar 11 sayı
+    const numbers = shuffle([...Array(TOTAL_NUMBERS).keys()]); // 0,1,2...10
     numbers.forEach(n => {
       const cell = document.createElement('div');
       cell.className = 'cell';
+      if (n === 0) cell.classList.add('zero');
       cell.textContent = n;
       cell.dataset.num = n;
       cell.addEventListener('click', () => handleTap(cell, n));
@@ -397,8 +492,21 @@
       if (num === START_NUM) {
         startTime = Date.now();
         timerInterval = setInterval(updateTimer, 100);
-        instruction.textContent = "Devam et! Roket kalkmak üzere... 🚀";
+        instruction.textContent = "Devam et! Sıfıra kadar say... 🚀";
         if (musicOn) startMusic();
+      }
+
+      // Eğer 0'a basıldıysa - büyük ATEŞLEME!
+      if (num === 0) {
+        cell.classList.add('correct-flash');
+        playIgnitionSound();
+        launchText.classList.add('show');
+        setTimeout(() => {
+          cell.classList.add('off');
+          cell.classList.remove('correct-flash');
+        }, 250);
+        endGame();
+        return;
       }
 
       cell.classList.add('correct-flash');
@@ -410,15 +518,15 @@
       }, 250);
 
       nextNumber--;
-      nextEl.textContent = nextNumber < 1 ? '🚀' : nextNumber;
+      nextEl.textContent = nextNumber;
       updateRocket();
 
-      // Heyecan artırma mesajları
+      // Heyecan mesajları
       if (nextNumber === 5) instruction.textContent = "Yarıyı geçtin! 🌟";
       if (nextNumber === 3) instruction.textContent = "Az kaldı! 🔥";
-      if (nextNumber === 1) instruction.textContent = "Son sayı! Roket hazır! 🚀";
+      if (nextNumber === 1) instruction.textContent = "Bir sonra SIFIR! ✨";
+      if (nextNumber === 0) instruction.textContent = "ŞİMDİ SIFIR'A BAS! 🚀";
 
-      if (num === 1) endGame();
     } else {
       cell.classList.add('wrong');
       playWrongSound();
@@ -441,15 +549,16 @@
     finalTime.textContent = elapsed.toFixed(1) + ' saniye';
     finalScore.textContent = score;
 
-    // Roketi havalandır
-    rocket.style.transition = 'transform 1.5s ease-in';
-    rocket.style.transform = 'translateX(-50%) translateY(-800px) scale(2)';
+    // Roket havalanıyor
+    setTimeout(() => {
+      rocket.style.transition = 'transform 1.8s cubic-bezier(0.4, 0, 1, 1)';
+      rocket.style.transform = 'translateX(-50%) translateY(-900px) scale(2.5)';
+      playLaunchSound();
+    }, 800);
 
     setTimeout(() => {
       endScreen.classList.remove('hidden');
-    }, 1500);
-
-    playWinSound();
+    }, 2800);
   }
 
   startGame();
