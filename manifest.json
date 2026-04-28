@@ -3,6 +3,7 @@
   "short_name": "Roket Sayım",
   "description": "10'dan 0'a geri sayarak roketi uzaya gönder! Çocuklar için eğlenceli matematik oyunu.",
   "start_url": "./index.html",
+  "id": "/gerisayim/",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait",
