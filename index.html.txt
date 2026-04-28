@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head><!-- PWA Meta Tags -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4a148c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Roket Sayım">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<!-- Service Worker Kayıt -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW kayıtlı:', reg.scope))
+        .catch(err => console.log('SW hatası:', err));
+    });
+  }
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Roket Geri Sayımı - 10'dan 0'a</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(180deg, #1a0033 0%, #4a148c 50%, #ec407a 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    color: white;
+    overflow: hidden;
+    position: relative;
+  }
+  /* Yıldızlar */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: twinkle 3s infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+  .header {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(8px);
+    z-index: 2;
+  }
+  .stat { text-align: center; }
+  .stat .label { font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+  .stat .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .next-target { color: #ffeb3b; }
+  .music-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .music-btn:active { transform: scale(0.9); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 460px;
+    padding: 4px;
+    z-index: 2;
+    justify-items: center;
+  }
+  .cell {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(32px, 11vw, 56px);
+    font-weight: 800;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #4fc3f7, #0288d1);
+    color: white;
+    box-shadow: 0 6px 16px rgba(2, 136, 209, 0.5), inset 0 -4px 0 rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.3s, background 0.3s;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  /* Sıfır özel renk */
+  .cell.zero {
+    background: linear-gradient(145deg, #ff9800, #e65100);
+    box-shadow: 0 6px 16px rgba(230, 81, 0, 0.6), inset 0 -4px 0 rgba(0,0,0,0.2);
+    animation: zeroPulse 1.5s infinite;
+  }
+  @keyframes zeroPulse {
+    0%, 100% { box-shadow: 0 6px 16px rgba(230, 81, 0, 0.6), inset 0 -4px 0 rgba(0,0,0,0.2); }
+    50% { box-shadow: 0 6px 30px rgba(255, 152, 0, 0.9), inset 0 -4px 0 rgba(0,0,0,0.2); }
+  }
+  .cell:active { transform: scale(0.92); }
+  .cell.off {
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.15);
+    box-shadow: none;
+    pointer-events: none;
+    text-decoration: line-through;
+    text-shadow: none;
+    animation: none;
+  }
+  .cell.wrong {
+    animation: shake 0.4s;
+    background: linear-gradient(145deg, #ff5252, #d32f2f) !important;
+  }
+  .cell.correct-flash {
+    animation: pop 0.3s;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+  @keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); background: linear-gradient(145deg, #66bb6a, #2e7d32); }
+    100% { transform: scale(1); }
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 20px;
+    text-align: center;
+  }
+  .overlay h1 { font-size: 40px; margin-bottom: 10px; }
+  .overlay .score-big {
+    font-size: 80px;
+    font-weight: 900;
+    color: #ffeb3b;
+    text-shadow: 0 0 30px rgba(255,235,59,0.6);
+    margin: 16px 0;
+  }
+  .overlay p { font-size: 18px; opacity: 0.85; margin-bottom: 8px; }
+  .btn {
+    margin-top: 24px;
+    padding: 14px 36px;
+    font-size: 18px;
+    font-weight: 700;
+    background: #ffeb3b;
+    color: #6a1b9a;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(255,235,59,0.4);
+  }
+  .btn:active { transform: scale(0.96); }
+  .hidden { display: none !important; }
+  .instruction {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 500;
+    z-index: 2;
+    min-height: 20px;
+  }
+  .rocket {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 36px;
+    pointer-events: none;
+    transition: transform 0.5s;
+    opacity: 0.85;
+    z-index: 3;
+  }
+  .launch-text {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 60px;
+    font-weight: 900;
+    color: #ffeb3b;
+    text-shadow: 0 0 40px rgba(255,235,59,0.9);
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .launch-text.show {
+    animation: launchTextAnim 1.5s forwards;
+  }
+  @keyframes launchTextAnim {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.3) rotate(5deg); opacity: 1; }
+    60% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.5) rotate(0deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="stars" id="stars"></div>
+
+  <button class="music-btn" id="musicBtn" title="Müzik">🔊</button>
+
+  <div class="header">
+    <div class="stat">
+      <div class="label">Süre</div>
+      <div class="value" id="timer">0.0s</div>
+    </div>
+    <div class="stat">
+      <div class="label">Sıradaki</div>
+      <div class="value next-target" id="next">10</div>
+    </div>
+    <div class="stat">
+      <div class="label">Puan</div>
+      <div class="value" id="score">1000</div>
+    </div>
+  </div>
+
+  <div class="instruction" id="instruction">🚀 10'dan başla, sıfıra kadar geri say! 10, 9... 1, 0</div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="rocket" id="rocket">🚀</div>
+
+  <div class="launch-text" id="launchText">🚀 ATEŞLEME! 🔥</div>
+
+  <div class="overlay hidden" id="endScreen">
+    <h1>🎉 Roket Uzayda!</h1>
+    <p>Süreniz: <span id="finalTime"></span></p>
+    <div class="score-big" id="finalScore">0</div>
+    <p>Puan</p>
+    <button class="btn" onclick="startGame()">Tekrar Oyna</button>
+  </div>
+
+<script>
+  const grid = document.getElementById('grid');
+  const timerEl = document.getElementById('timer');
+  const scoreEl = document.getElementById('score');
+  const nextEl = document.getElementById('next');
+  const endScreen = document.getElementById('endScreen');
+  const finalTime = document.getElementById('finalTime');
+  const finalScore = document.getElementById('finalScore');
+  const instruction = document.getElementById('instruction');
+  const musicBtn = document.getElementById('musicBtn');
+  const rocket = document.getElementById('rocket');
+  const launchText = document.getElementById('launchText');
+  const starsContainer = document.getElementById('stars');
+
+  const MAX_SCORE = 1000;
+  const START_NUM = 10;
+  const END_NUM = 0;
+  const TOTAL_NUMBERS = START_NUM - END_NUM + 1; // 11 sayı
+  let nextNumber = START_NUM;
+  let startTime = null;
+  let timerInterval = null;
+
+  // Yıldızlar oluştur
+  for (let i = 0; i < 30; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    starsContainer.appendChild(star);
+  }
+
+  // ==== SES SİSTEMİ ====
+  let audioCtx = null;
+  let musicOn = true;
+  let musicTimer = null;
+  let masterGain = null;
+  let musicGain = null;
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.6;
+    masterGain.connect(audioCtx.destination);
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.15;
+    musicGain.connect(masterGain);
+  }
+
+  function playNote(freq, duration, type = 'triangle', gainNode = masterGain, volume = 0.3) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(gainNode);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  // Doğru dokunma sesi - sayı küçüldükçe heyecan artar
+  function playCorrectSound(num) {
+    initAudio();
+    const baseFreq = 300 + (START_NUM - num + 1) * 40;
+    playNote(baseFreq, 0.15, 'sine', masterGain, 0.4);
+    setTimeout(() => playNote(baseFreq * 1.3, 0.2, 'sine', masterGain, 0.3), 60);
+  }
+
+  // Yanlış dokunma sesi
+  function playWrongSound() {
+    initAudio();
+    playNote(200, 0.15, 'sawtooth', masterGain, 0.3);
+    setTimeout(() => playNote(150, 0.2, 'sawtooth', masterGain, 0.3), 100);
+  }
+
+  // ATEŞLEME sesi - sıfıra basıldığında özel patlama
+  function playIgnitionSound() {
+    initAudio();
+    // Önce büyük "patlama" gürültüsü
+    const noise = audioCtx.createBufferSource();
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.5, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+    }
+    noise.buffer = buffer;
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.value = 0.4;
+    noise.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start();
+  }
+
+  // Roket kalkış sesi
+  function playLaunchSound() {
+    initAudio();
+    const duration = 1.5;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + duration);
+    gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+
+    setTimeout(() => {
+      const notes = [659, 784, 1047, 1319, 1568];
+      notes.forEach((freq, i) => {
+        setTimeout(() => playNote(freq, 0.3, 'triangle', masterGain, 0.4), i * 130);
+      });
+    }, 1400);
+  }
+
+  // Neşeli arka plan müziği
+  const melody = [
+    {n: 659, d: 0.3}, {n: 784, d: 0.3}, {n: 1047, d: 0.3}, {n: 784, d: 0.3},
+    {n: 659, d: 0.3}, {n: 784, d: 0.3}, {n: 1047, d: 0.6},
+    {n: 587, d: 0.3}, {n: 698, d: 0.3}, {n: 880, d: 0.3}, {n: 698, d: 0.3},
+    {n: 587, d: 0.3}, {n: 698, d: 0.3}, {n: 880, d: 0.6},
+    {n: 523, d: 0.3}, {n: 659, d: 0.3}, {n: 784, d: 0.3}, {n: 659, d: 0.3},
+    {n: 523, d: 0.3}, {n: 659, d: 0.3}, {n: 784, d: 0.6},
+    {n: 587, d: 0.3}, {n: 698, d: 0.3}, {n: 880, d: 0.3}, {n: 1047, d: 0.3},
+    {n: 1175, d: 0.3}, {n: 1047, d: 0.3}, {n: 880, d: 0.6},
+  ];
+
+  let melodyIndex = 0;
+
+  function playMelodyStep() {
+    if (!musicOn || !audioCtx) return;
+    const note = melody[melodyIndex];
+    playNote(note.n, note.d * 0.9, 'triangle', musicGain, 0.5);
+    playNote(note.n / 4, note.d * 0.9, 'sine', musicGain, 0.3);
+    melodyIndex = (melodyIndex + 1) % melody.length;
+    musicTimer = setTimeout(playMelodyStep, note.d * 1000);
+  }
+
+  function startMusic() {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (musicTimer) clearTimeout(musicTimer);
+    melodyIndex = 0;
+    playMelodyStep();
+  }
+
+  function stopMusic() {
+    if (musicTimer) {
+      clearTimeout(musicTimer);
+      musicTimer = null;
+    }
+  }
+
+  musicBtn.addEventListener('click', () => {
+    musicOn = !musicOn;
+    musicBtn.textContent = musicOn ? '🔊' : '🔇';
+    if (musicOn) {
+      startMusic();
+    } else {
+      stopMusic();
+    }
+  });
+
+  // ==== OYUN MANTIĞI ====
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function updateRocket() {
+    const progress = (START_NUM - nextNumber) / (START_NUM - END_NUM + 1);
+    const offset = progress * 80;
+    rocket.style.transform = `translateX(-50%) translateY(${-offset}px) scale(${1 + progress * 0.4})`;
+  }
+
+  function startGame() {
+    nextNumber = START_NUM;
+    startTime = null;
+    clearInterval(timerInterval);
+    timerEl.textContent = '0.0s';
+    scoreEl.textContent = MAX_SCORE;
+    nextEl.textContent = START_NUM;
+    instruction.textContent = "🚀 10'dan başla, sıfıra kadar geri say!";
+    endScreen.classList.add('hidden');
+    rocket.style.transition = 'transform 0.5s';
+    rocket.style.transform = 'translateX(-50%)';
+    launchText.classList.remove('show');
+
+    grid.innerHTML = '';
+    // 0'dan 10'a kadar 11 sayı
+    const numbers = shuffle([...Array(TOTAL_NUMBERS).keys()]); // 0,1,2...10
+    numbers.forEach(n => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (n === 0) cell.classList.add('zero');
+      cell.textContent = n;
+      cell.dataset.num = n;
+      cell.addEventListener('click', () => handleTap(cell, n));
+      grid.appendChild(cell);
+    });
+  }
+
+  function handleTap(cell, num) {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (num === nextNumber) {
+      if (num === START_NUM) {
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 100);
+        instruction.textContent = "Devam et! Sıfıra kadar say... 🚀";
+        if (musicOn) startMusic();
+      }
+
+      // Eğer 0'a basıldıysa - büyük ATEŞLEME!
+      if (num === 0) {
+        cell.classList.add('correct-flash');
+        playIgnitionSound();
+        launchText.classList.add('show');
+        setTimeout(() => {
+          cell.classList.add('off');
+          cell.classList.remove('correct-flash');
+        }, 250);
+        endGame();
+        return;
+      }
+
+      cell.classList.add('correct-flash');
+      playCorrectSound(num);
+
+      setTimeout(() => {
+        cell.classList.add('off');
+        cell.classList.remove('correct-flash');
+      }, 250);
+
+      nextNumber--;
+      nextEl.textContent = nextNumber;
+      updateRocket();
+
+      // Heyecan mesajları
+      if (nextNumber === 5) instruction.textContent = "Yarıyı geçtin! 🌟";
+      if (nextNumber === 3) instruction.textContent = "Az kaldı! 🔥";
+      if (nextNumber === 1) instruction.textContent = "Bir sonra SIFIR! ✨";
+      if (nextNumber === 0) instruction.textContent = "ŞİMDİ SIFIR'A BAS! 🚀";
+
+    } else {
+      cell.classList.add('wrong');
+      playWrongSound();
+      setTimeout(() => cell.classList.remove('wrong'), 400);
+    }
+  }
+
+  function updateTimer() {
+    const elapsed = (Date.now() - startTime) / 1000;
+    timerEl.textContent = elapsed.toFixed(1) + 's';
+    const currentScore = Math.max(MAX_SCORE - Math.floor(elapsed * 5), 1);
+    scoreEl.textContent = currentScore;
+  }
+
+  function endGame() {
+    clearInterval(timerInterval);
+    stopMusic();
+    const elapsed = (Date.now() - startTime) / 1000;
+    const score = Math.max(MAX_SCORE - Math.floor(elapsed * 5), 1);
+    finalTime.textContent = elapsed.toFixed(1) + ' saniye';
+    finalScore.textContent = score;
+
+    // Roket havalanıyor
+    setTimeout(() => {
+      rocket.style.transition = 'transform 1.8s cubic-bezier(0.4, 0, 1, 1)';
+      rocket.style.transform = 'translateX(-50%) translateY(-900px) scale(2.5)';
+      playLaunchSound();
+    }, 800);
+
+    setTimeout(() => {
+      endScreen.classList.remove('hidden');
+    }, 2800);
+  }
+
+  startGame();
+</script>
+</body>
+</html>

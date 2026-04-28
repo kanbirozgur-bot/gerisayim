@@ -1,0 +1,27 @@
+{
+  "name": "Roket Geri Sayımı",
+  "short_name": "Roket Sayım",
+  "description": "10'dan 0'a geri sayarak roketi uzaya gönder! Çocuklar için eğlenceli matematik oyunu.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1a0033",
+  "theme_color": "#4a148c",
+  "lang": "tr",
+  "categories": ["games", "education", "kids"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
